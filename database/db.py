@@ -1,12 +1,12 @@
 import pyodbc
-from dotenv import load_dotenv
 import os
+import sys
 import time
+import platform
 
-# load_dotenv() 會讀取專案根目錄的 .env 檔案，
-# 把裡面的 KEY=VALUE 全部載入成環境變數，
-# 這樣下面的 os.getenv() 才能取到值
-load_dotenv()
+# 讓「from config import get_secret」在各種執行方式下都找得到專案根目錄
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import get_secret
 
 
 # ── 哪些錯誤代表「資料庫還在喚醒中」，值得自動重試 ───────────────────────────
@@ -32,18 +32,42 @@ def _is_transient(err: Exception) -> bool:
     return any(hint in msg for hint in _TRANSIENT_HINTS)
 
 
-def _build_connection_string() -> str:
-    """組出 pyodbc 用的連線字串（值來自 .env）。"""
-    server   = os.getenv("SQL_SERVER")
-    database = os.getenv("SQL_DATABASE")
-    username = os.getenv("SQL_USERNAME")
-    password = os.getenv("SQL_PASSWORD")
+def _default_driver() -> str:
+    """
+    依作業系統選預設 ODBC 驅動程式：
+      - Windows（本機開發）→ 微軟官方「ODBC Driver 18 for SQL Server」
+      - 其他（Linux，如 Streamlit Cloud）→ 「FreeTDS」（用 packages.txt 安裝）
+    也可用 SQL_ODBC_DRIVER 這個設定覆蓋。
+    """
+    if platform.system() == "Windows":
+        return "ODBC Driver 18 for SQL Server"
+    return "FreeTDS"
 
-    # ODBC Driver 18 for SQL Server 是微軟官方驅動程式，支援 Azure SQL
+
+def _build_connection_string() -> str:
+    """組出 pyodbc 用的連線字串（值來自 .env 或 Streamlit Secrets）。"""
+    server   = get_secret("SQL_SERVER")
+    database = get_secret("SQL_DATABASE")
+    username = get_secret("SQL_USERNAME")
+    password = get_secret("SQL_PASSWORD")
+    driver   = get_secret("SQL_ODBC_DRIVER") or _default_driver()
+
+    if "freetds" in driver.lower():
+        # FreeTDS（Linux / Streamlit Cloud）連 Azure SQL：
+        # 用 PORT + TDS_Version=7.4，不能帶微軟驅動專用的 Encrypt/TrustServerCertificate 參數
+        return (
+            f"DRIVER={{{driver}}};"
+            f"SERVER={server};PORT=1433;"
+            f"DATABASE={database};"
+            f"UID={username};PWD={password};"
+            f"TDS_Version=7.4;"
+        )
+
+    # 微軟官方 ODBC Driver 18（Windows 本機）
     # Encrypt=yes：連線加密（Azure SQL 強制要求）
     # TrustServerCertificate=no：不跳過憑證驗證（安全設定）
     return (
-        f"DRIVER={{ODBC Driver 18 for SQL Server}};"
+        f"DRIVER={{{driver}}};"
         f"SERVER={server};"
         f"DATABASE={database};"
         f"UID={username};"

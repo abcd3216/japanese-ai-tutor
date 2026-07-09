@@ -54,25 +54,33 @@ class GrammarRetriever:
 
     def __init__(self):
         """
-        初始化：連線到已存在的 ChromaDB collection。
-        若 collection 不存在（還沒跑 embedder.py），會顯示提示訊息。
+        初始化：連線到 ChromaDB collection。
+        若索引還不存在（例如雲端首次啟動，chroma_db 沒放進 repo），
+        會自動呼叫 embedder 建立一次；建立失敗時 collection 保持 None，
+        RAG 搜尋會回傳空結果（AI 仍能用自身知識回答，不會整個壞掉）。
         """
         self.collection = None
 
-        # 確認 ChromaDB 資料夾存在
-        if not os.path.exists(CHROMA_DIR):
-            print("[ERROR] 找不到 ChromaDB 索引資料夾。")
-            print("   請先執行：python rag/embedder.py")
-            return
+        # 若索引不存在就自動建立（雲端部署首次啟動時會用到）
+        need_build = not os.path.exists(CHROMA_DIR)
+        if not need_build:
+            client = chromadb.PersistentClient(path=CHROMA_DIR)
+            if COLLECTION_NAME not in [c.name for c in client.list_collections()]:
+                need_build = True
 
-        # 連線到 ChromaDB
+        if need_build:
+            print("[INFO] 找不到向量索引，正在自動建立（首次啟動會下載模型、較久）…")
+            try:
+                from rag import embedder
+                embedder.main()
+            except Exception as e:
+                print(f"[ERROR] 自動建立向量索引失敗：{e}")
+                return
+
+        # 連線到 ChromaDB 並取得 collection
         client = chromadb.PersistentClient(path=CHROMA_DIR)
-
-        # 確認 collection 存在
-        existing = [c.name for c in client.list_collections()]
-        if COLLECTION_NAME not in existing:
-            print(f"[ERROR] 找不到 collection '{COLLECTION_NAME}'。")
-            print("   請先執行：python rag/embedder.py")
+        if COLLECTION_NAME not in [c.name for c in client.list_collections()]:
+            print(f"[ERROR] 建立後仍找不到 collection '{COLLECTION_NAME}'。")
             return
 
         self.collection = client.get_collection(

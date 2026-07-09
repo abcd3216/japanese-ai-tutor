@@ -1,14 +1,12 @@
 from google import genai
 from google.genai import types
-from dotenv import load_dotenv
 import os
 import sys
 
-# rag 資料夾在專案根目錄，需要把根目錄加入 Python 搜尋路徑
+# rag / config 都在專案根目錄，需要把根目錄加入 Python 搜尋路徑
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from rag.retriever import get_retriever
-
-load_dotenv()
+from config import get_secret
 
 # ============================================================
 # 系統提示詞（System Prompt）
@@ -71,7 +69,7 @@ class JapaneseTutor:
             level - 學習程度 'N5' 或 'N4'，影響系統提示詞與 RAG 搜尋範圍
         """
         self.level = level
-        api_key = os.getenv("GEMINI_API_KEY")
+        api_key = get_secret("GEMINI_API_KEY")
 
         # AQ. 開頭的新版 key 需要指定 api_version='v1'
         self.client = genai.Client(
