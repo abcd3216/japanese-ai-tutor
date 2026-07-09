@@ -50,34 +50,47 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-        /* 隱藏整個頂部 header（含右上角所有圖示） */
-        header[data-testid="stHeader"]       { display: none !important; }
+        /* 頂部 header 保留（不整個隱藏！），只設透明並隱藏工具列項目。
+           ── 為什麼不整個隱藏 header ──
+           Streamlit「重新展開側邊欄」的展開鈕 stExpandSidebarButton 就住在 header 裡，
+           之前把整個 header 藏掉，導致側邊欄一收起就再也打不開。 */
+        header[data-testid="stHeader"]        { background: transparent !important; }
+        [data-testid="stToolbar"]             { display: none !important; }
+        [data-testid="stToolbarActions"]      { display: none !important; }
+        [data-testid="stMainMenu"]            { display: none !important; }
+        [data-testid="stMainMenuButton"]      { display: none !important; }
         #MainMenu                             { display: none !important; }
         .stDeployButton                       { display: none !important; }
         [data-testid="stStatusWidget"]        { display: none !important; }
-        [data-testid="stToolbar"]             { display: none !important; }
         [data-testid="stDecoration"]          { display: none !important; }
         [data-testid="stAppDeployButton"]     { display: none !important; }
-        /* Streamlit 1.30+ 的 header 容器 */
-        div[class*="appview-container"] > header { display: none !important; }
         /* 隱藏所有輸入框的 "Press Enter to apply" 提示 */
-        [data-testid="InputInstructions"] { display: none !important; }
+        [data-testid="InputInstructions"]     { display: none !important; }
 
-        /* ── 移除「收合側邊欄」功能 ──────────────────────────────
-           因為我們把頂部 header 藏起來了，Streamlit「重新展開側邊欄」的箭頭
-           也在 header 裡被一起藏住，導致一旦收起就打不開。
-           直接把收合鈕拿掉，讓側邊欄永遠固定展開，就不會卡住。 */
-        [data-testid="stSidebarCollapseButton"]  { display: none !important; }
-        [data-testid="stSidebarCollapsedControl"]{ display: none !important; }
-        [data-testid="collapsedControl"]         { display: none !important; }
-        /* 保險：強制側邊欄一直顯示、不被收合狀態隱藏 */
+        /* ── 讓側邊欄永遠展開、不會卡住（三重保險）──────────────
+           1) 隱藏「收合鈕」→ 使用者根本無法收起 */
+        [data-testid="stSidebarCollapseButton"] { display: none !important; }
+        /* 2) 強制側邊欄一直顯示（即使殘留 collapsed 狀態也照樣展開） */
         section[data-testid="stSidebar"] {
             display: block !important;
             visibility: visible !important;
             transform: none !important;
+            margin-left: 0 !important;
         }
         section[data-testid="stSidebar"][aria-expanded="false"] {
+            transform: none !important;
             margin-left: 0 !important;
+            /* 這版 Streamlit 收合是把寬度設成 0，這裡強制撐回原寬度，內容照樣看得到 */
+            min-width: 300px !important;
+            width: 300px !important;
+        }
+        section[data-testid="stSidebar"][aria-expanded="false"] > div {
+            width: 300px !important;
+        }
+        /* 3) 保留頂部的「展開鈕」可點，作為最後安全網（萬一還是收起了也點得開） */
+        [data-testid="stExpandSidebarButton"] {
+            display: inline-flex !important;
+            visibility: visible !important;
         }
     </style>
     """,
