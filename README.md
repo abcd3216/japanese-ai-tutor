@@ -1,174 +1,129 @@
 # 🎌 日文學習 AI 助教系統
 
-> **Japanese AI Tutor** — 以 Gemini API 驅動的日語學習平台
-
-一套結合 **AI 對話教練 × RAG 文法知識庫 × 單字卡 × 單字小恐龍遊戲** 的日語學習系統，
-學習紀錄即時存入 Azure SQL Server，並可搭配 n8n 做每日學習日誌信（選配）。
-
----
-
-## ✨ 功能亮點
-
-| 頁面 | 功能 |
-|---|---|
-| 💬 **AI 對話練習** | 與「小葵老師」（Gemini 2.5 Flash）用日文／中文對話，串流即時回覆。整合 RAG 文法知識庫做 N5/N4 文法解釋；知識庫沒有的單字／發音／翻譯也會用 AI 自身知識正確回答 |
-| 🃏 **單字卡** | 依你選的程度（N5/N4）先分詞性（動詞／名詞／形容詞），點進去看該詞性所有單字的**可翻面卡片**（正面日文＋假名，點一下翻面看中文） |
-| 🦖 **單字小恐龍** | 限時 60 秒的判斷遊戲：判斷障礙物上的日文是不是目標中文的意思（數字鍵 1＝對、2＝錯）。成績用 SM-2 間隔重複演算法寫回學習紀錄 |
+一個幫你學日文的小網站。裡面有一位 AI 老師「小葵老師」可以陪你聊天問問題，
+還有背單字的翻面卡片，跟一個限時 60 秒的「單字小恐龍」小遊戲。
+你的學習紀錄會自動存到雲端資料庫，之後還能每天寄一封學習日誌到你的 Gmail（這個是選配的）。
 
 ---
 
-## 🛠️ 技術棧
+## 這個網站可以做什麼？
 
-| 用途 | 技術 |
-|---|---|
-| AI 對話 | Google Gemini API (`gemini-2.5-flash`、`google-genai`) |
-| 向量檢索 / RAG | ChromaDB + `paraphrase-multilingual-MiniLM-L12-v2` |
-| 資料庫 | Azure SQL Server (`pyodbc`) + 預存程序 |
-| 前端介面 | Streamlit |
-| 間隔重複 | SM-2 演算法（`tutor/srs.py`） |
-| 每日日誌信（選配） | n8n + Gmail |
-| 機密設定 | python-dotenv (`.env`) |
+- **💬 跟 AI 老師聊天**
+  有問題就問小葵老師，像「て形怎麼用」「電燈的日文怎麼說」，她會用中文詳細解釋、給例句。
+  文法問題她會查內建的文法知識庫，單字、翻譯這類問題就用她自己的日語知識回答。
 
----
+- **🃏 背單字卡**
+  選好程度（N5 或 N4）後，先挑詞性（動詞／名詞／形容詞），
+  就會看到一張張單字卡。正面是日文，點一下翻過來看中文意思。
 
-## 📁 專案結構
-
-```
-japanese_ai_tutor/
-├── app.py                       # Streamlit 主程式（頁面導航、DB 連線喚醒保護）
-├── .env.example                 # 環境變數範本（複製成 .env 後填值）
-├── requirements.txt
-├── database/
-│   ├── db.py                    # Azure SQL 連線（含閒置喚醒自動重試）
-│   ├── queries.py               # 所有 SQL 查詢／寫入函式
-│   ├── setup.sql                # 建立 5 張表 + 預存程序
-│   ├── seed_vocabulary.sql      # 種子單字（N5 80 + N4 80，共 160 筆）
-│   └── seed_vocabulary_add80.sql# 把既有 120 筆補到 160 筆的補丁（防重複）
-├── tutor/
-│   ├── gemini_chat.py           # JapaneseTutor — Gemini 對話類別（整合 RAG、串流）
-│   └── srs.py                   # SM-2 間隔重複演算法
-├── rag/
-│   ├── knowledge/               # N5 / N4 文法知識庫（.txt）
-│   ├── embedder.py              # 建立 ChromaDB 向量索引
-│   └── retriever.py             # GrammarRetriever — 語意搜尋
-├── views/
-│   ├── chat.py                  # AI 對話練習頁面
-│   ├── flashcard.py             # 單字卡頁面（依詞性翻面瀏覽）
-│   └── dino_game.py             # 單字小恐龍遊戲頁面
-├── assets/sounds/               # 遊戲音效
-├── data/chroma_db/              # ChromaDB 向量資料庫（本機生成，未版控）
-├── n8n/                         # 每日日誌信自動化（選配，見 n8n/README.md）
-└── test_day1.py ~ test_day4.py  # 各階段整合測試
-```
+- **🦖 玩單字小恐龍**
+  螢幕上會出現一個中文題目，小恐龍前面跑來一個寫著日文的障礙物，
+  你要判斷這個日文是不是題目的意思：對就按 `1`、錯就按 `2`。限時 60 秒，玩完成績會自動存起來。
 
 ---
 
-## 🚀 快速開始
+## 我要怎麼把它跑起來？
 
-### 0. 前置需求
+> 下面每一步都是在你自己的電腦上做。需要先有 Python（3.10 以上）。
 
-- Python 3.10+
-- **ODBC Driver 18 for SQL Server**（`pyodbc` 連 Azure SQL 必裝，
-  [微軟下載頁](https://learn.microsoft.com/sql/connect/odbc/download-odbc-driver-for-sql-server)）
-- 一個 **Azure SQL Database**（或其他 SQL Server）
-- 一把 **Google Gemini API Key**（[Google AI Studio](https://aistudio.google.com/apikey) 免費申請）
+### 第 1 步：安裝需要的套件
 
-### 1. 安裝相依套件
+打開終端機，切到專案資料夾，執行：
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. 設定 `.env`
+這會一次把用到的工具都裝好。
 
-複製範本後填入你自己的值：
+另外要裝一個微軟的資料庫驅動程式 **「ODBC Driver 18 for SQL Server」**
+（[點這裡下載](https://learn.microsoft.com/sql/connect/odbc/download-odbc-driver-for-sql-server)），
+不然連不上資料庫。
+
+### 第 2 步：填入你自己的金鑰和資料庫帳密
+
+專案裡有一個範本檔 `.env.example`，把它複製成 `.env`：
 
 ```bash
-cp .env.example .env      # Windows 用 copy .env.example .env
+cp .env.example .env      # 如果是 Windows，改用 copy .env.example .env
 ```
+
+然後打開 `.env`，把裡面的值換成你自己的：
 
 ```env
-GEMINI_API_KEY=你的_Gemini_API_Key
-SQL_SERVER=your-server.database.windows.net
-SQL_DATABASE=your-database
-SQL_USERNAME=your-username
-SQL_PASSWORD=your-password
+GEMINI_API_KEY=你的_Gemini_金鑰
+SQL_SERVER=你的資料庫伺服器位址
+SQL_DATABASE=你的資料庫名稱
+SQL_USERNAME=你的資料庫帳號
+SQL_PASSWORD=你的資料庫密碼
 ```
 
-> 🔒 `.env` 已被 `.gitignore` 排除，不會上傳。請用**你自己的**資料庫與 API Key。
+- **Gemini 金鑰**：到 [Google AI Studio](https://aistudio.google.com/apikey) 免費申請一把。
+- **資料庫**：需要一個自己的 Azure SQL Database（或其他 SQL Server）。
 
-### 3. 建立資料庫結構與種子單字
+> 🔒 `.env` 裡是你的密碼，**不會被上傳到 GitHub**（已經設定好排除了），放心。
 
-在你的 Azure SQL 執行：
-1. `database/setup.sql`（建立 5 張表 + 預存程序）
-2. `database/seed_vocabulary.sql`（匯入 160 筆種子單字）
+### 第 3 步：建立資料庫的表格和單字
 
-### 4. 建立 ChromaDB 向量索引
+用你的資料庫工具，依序執行這兩個檔案：
+
+1. `database/setup.sql` — 建立要用的表格
+2. `database/seed_vocabulary.sql` — 匯入 160 個單字（N5、N4 各 80 個）
+
+### 第 4 步：讓 AI 老師讀懂文法知識庫
+
+執行：
 
 ```bash
 python rag/embedder.py
 ```
 
-首次執行會自動下載多語言 Embedding 模型（約 470 MB）。
+這一步會把文法資料整理成 AI 查得到的格式。
+第一次執行會下載一個語言模型（約 470 MB），要等一下，之後就不用再下載了。
 
-### 5. 啟動應用
+### 第 5 步：啟動網站
 
 ```bash
 streamlit run app.py
 ```
 
-瀏覽器開 `http://localhost:8501`，左側輸入名字、選程度（N5/N4），按「✅ 開始學習」。
+執行後打開瀏覽器的 `http://localhost:8501`，
+在左邊輸入名字、選程度，按「✅ 開始學習」就可以用了！
 
 ---
 
-## 🗄️ 資料庫結構
+## 常見狀況
 
-### 資料表
+- **一開始連很慢、卡住？**
+  如果你用的是 Azure 免費版資料庫，它閒置一陣子會自動「睡著」，
+  下次連線要花 1～2 分鐘把它叫醒。這時畫面會顯示「⏳ 喚醒資料庫中」，
+  等一下就好，**這是正常的，不是壞掉**。
 
-- **users** — 使用者（`user_id`, `name`, `level`, `created_at`, `email`）
-- **vocabulary** — 單字（`word_id`, `japanese`, `hiragana`, `chinese`, `level`, `category`）
-- **learning_records** — SM-2 學習紀錄（`record_id`, `user_id`, `word_id`, `ease_factor`, `interval_days`, `next_review`, `correct_count`, `wrong_count`）
-- **chat_history** — 對話紀錄（`chat_id`, `user_id`, `role`, `content`, `grammar_topic`, `mistake_type`, `created_at`）
-- **game_sessions** — 小恐龍場次（`session_id`, `user_id`, `played_at`, `score`, `total_rounds`, `wrong_words`）
-
----
-
-## ☁️ 部署 / 給別人使用
-
-- **機密**：只上傳 `.env.example`，**絕不上傳 `.env`**（含帳密與 API Key）。每個人用自己的資料庫與 Key。
-- **Azure SQL Free tier 會閒置自動暫停**：第一次連線需 1～2 分鐘喚醒。本專案的 `database/db.py`
-  已內建**自動重試**、`app.py` 會顯示「⏳ 喚醒資料庫中」友善等待畫面，不會噴紅色錯誤。
-- 想給別人更順的體驗，也可換不會暫停的免費 DB（Supabase / Neon，需微調 `db.py` 連線）。
+- **AI 回覆有點慢？**
+  因為要連到 Google 的伺服器生成回覆，網路來回需要一點時間。
+  送出後會先出現「💭 思考中…」，然後老師會像打字一樣一段一段回你。
 
 ---
 
-## 🤖 每日日誌信（選配）
+## 用到的技術（給有興趣的人看）
 
-`n8n/` 資料夾有一套 n8n 自動化：每天早上把前一天的小恐龍成績整理成 HTML 信、
-**錯題依詞性分組**，一人一封寄到各自 Gmail。屬於選配功能，需自備 n8n 服務，
-詳見 [`n8n/README.md`](n8n/README.md)。
-
----
-
-## ⚠️ 注意事項（踩過的坑）
-
-- 使用 `google-genai`（新版），**不是**已棄用的 `google-generativeai`。
-- Gemini `AQ.` 開頭的新版 Key 需 `http_options=types.HttpOptions(api_version='v1')`；v1 API 不支援 `system_instruction` 與 `thinking_config`。
-- `pyodbc` 需 **ODBC Driver 18 for SQL Server**。
-- SQL 中文字串常數要加 `N` 前綴（如 `N'動詞'`），否則會變亂碼。
-- Windows 終端機（cp950）用 `print()` 印 emoji 會 `UnicodeEncodeError`；跑 `embedder.py` 建議設 `PYTHONIOENCODING=utf-8`。
+| 做什麼 | 用了什麼 |
+|---|---|
+| AI 對話 | Google Gemini（`gemini-2.5-flash`） |
+| 文法知識庫搜尋 | ChromaDB（把文法變成 AI 查得到的向量） |
+| 資料庫 | Azure SQL Server |
+| 網站畫面 | Streamlit |
+| 單字複習排程 | SM-2 間隔重複演算法 |
 
 ---
 
-## 🔧 重建 ChromaDB 索引
+## 每天寄學習日誌到 Gmail（選配，可略過）
 
-```bash
-rm -rf data/chroma_db/     # Windows: Remove-Item -Recurse -Force data/chroma_db
-python rag/embedder.py
-```
+`n8n/` 資料夾裡有一套自動化：每天早上把前一天玩小恐龍的成績整理成一封信，
+還會把答錯的單字依詞性分類，寄到你的 Gmail。
+這個功能要另外有一台 n8n 才能用，屬於加分項，不影響網站本身。
+想試的話看 [`n8n/README.md`](n8n/README.md)。
 
 ---
-
-## 📄 授權
 
 本專案為個人學習用途開發。
