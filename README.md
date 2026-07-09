@@ -78,7 +78,7 @@ SQL_USERNAME=你的資料庫帳號
 SQL_PASSWORD=你的資料庫密碼
 ```
 
-- **Gemini 金鑰**：到 [Google AI Studio](https://aistudio.google.com/apikey) 免費申請一把（我自己也是用免費的）。
+- **Gemini 金鑰**：到 [Google AI Studio](https://aistudio.google.com/apikey) 申請一把（我自己是用付費的）。
 - **資料庫**：需要一個你自己的 Azure SQL Database（或其他 SQL Server）。
 
 > 🔒 `.env` 裡是你的密碼，我已經設定成**不會被上傳到 GitHub**，放心。
@@ -133,7 +133,7 @@ streamlit run app.py
 |---|---|
 | AI 對話 | Google Gemini（`gemini-2.5-flash`） |
 | 文法知識庫搜尋（RAG） | ChromaDB（把文法變成 AI 查得到的向量） |
-| 資料庫 | Azure SQL Server + 預存程序 |
+| 資料庫 | Azure SQL Server  |
 | 網站畫面 | Streamlit |
 | 單字複習排程 | SM-2 間隔重複演算法 |
 | 每日自動寄信 | n8n |
