@@ -43,6 +43,7 @@ st.set_page_config(
     page_title="AI 日語助教",
     page_icon="🎌",
     layout="wide",
+    initial_sidebar_state="expanded",
 )
 
 # 隱藏 Streamlit 預設的頂部工具列（Stop、Deploy、三點選單）
@@ -61,6 +62,23 @@ st.markdown(
         div[class*="appview-container"] > header { display: none !important; }
         /* 隱藏所有輸入框的 "Press Enter to apply" 提示 */
         [data-testid="InputInstructions"] { display: none !important; }
+
+        /* ── 移除「收合側邊欄」功能 ──────────────────────────────
+           因為我們把頂部 header 藏起來了，Streamlit「重新展開側邊欄」的箭頭
+           也在 header 裡被一起藏住，導致一旦收起就打不開。
+           直接把收合鈕拿掉，讓側邊欄永遠固定展開，就不會卡住。 */
+        [data-testid="stSidebarCollapseButton"]  { display: none !important; }
+        [data-testid="stSidebarCollapsedControl"]{ display: none !important; }
+        [data-testid="collapsedControl"]         { display: none !important; }
+        /* 保險：強制側邊欄一直顯示、不被收合狀態隱藏 */
+        section[data-testid="stSidebar"] {
+            display: block !important;
+            visibility: visible !important;
+            transform: none !important;
+        }
+        section[data-testid="stSidebar"][aria-expanded="false"] {
+            margin-left: 0 !important;
+        }
     </style>
     """,
     unsafe_allow_html=True,
