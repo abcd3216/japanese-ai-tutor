@@ -59,12 +59,17 @@ def _build_connection_string() -> str:
 
     if is_freetds:
         # FreeTDS（Linux / Streamlit Cloud）連 Azure SQL：
-        # 用 PORT + TDS_Version=7.4，不能帶微軟驅動專用的 Encrypt/TrustServerCertificate 參數
+        # 1) 用 PORT + TDS_Version=7.4，不能帶微軟驅動專用的 Encrypt/TrustServerCertificate 參數
+        # 2) Azure SQL 用 FreeTDS 連線時，帳號必須帶「伺服器短名」→ user@servername
+        #    （微軟官方驅動會自動處理，FreeTDS 不會，少了會噴
+        #     "Cannot open server 'xxx' requested by the login"）
+        short = server.split(".")[0] if server else ""
+        uid = username if (username and "@" in username) else f"{username}@{short}"
         return (
             f"DRIVER={{{driver}}};"
             f"SERVER={server};PORT=1433;"
             f"DATABASE={database};"
-            f"UID={username};PWD={password};"
+            f"UID={uid};PWD={password};"
             f"TDS_Version=7.4;"
         )
 
