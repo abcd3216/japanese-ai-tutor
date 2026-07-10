@@ -36,12 +36,13 @@ def _default_driver() -> str:
     """
     依作業系統選預設 ODBC 驅動程式：
       - Windows（本機開發）→ 微軟官方「ODBC Driver 18 for SQL Server」
-      - 其他（Linux，如 Streamlit Cloud）→ 「FreeTDS」（用 packages.txt 安裝）
-    也可用 SQL_ODBC_DRIVER 這個設定覆蓋。
+      - 其他（Linux，如 Streamlit Cloud）→ FreeTDS 驅動的完整 .so 路徑
+        （用 packages.txt 的 tdsodbc 安裝；直接指路徑，不依賴 odbcinst 自動註冊，較穩）
+    也可用 SQL_ODBC_DRIVER 這個設定覆蓋（例如改成已註冊的名稱 "FreeTDS"）。
     """
     if platform.system() == "Windows":
         return "ODBC Driver 18 for SQL Server"
-    return "FreeTDS"
+    return "/usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so"
 
 
 def _build_connection_string() -> str:
@@ -52,7 +53,11 @@ def _build_connection_string() -> str:
     password = get_secret("SQL_PASSWORD")
     driver   = get_secret("SQL_ODBC_DRIVER") or _default_driver()
 
-    if "freetds" in driver.lower():
+    # 只要不是微軟官方驅動，一律當成 FreeTDS（名稱可能是 "FreeTDS" 或 libtdsodbc.so 路徑）
+    driver_l = driver.lower()
+    is_freetds = any(k in driver_l for k in ("freetds", "tdsodbc", "libtds"))
+
+    if is_freetds:
         # FreeTDS（Linux / Streamlit Cloud）連 Azure SQL：
         # 用 PORT + TDS_Version=7.4，不能帶微軟驅動專用的 Encrypt/TrustServerCertificate 參數
         return (
