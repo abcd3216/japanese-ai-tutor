@@ -6,10 +6,46 @@ pages/chat.py — AI 日語對話練習頁面
 """
 
 import base64
+import json
 import os
+import re
 import streamlit as st
+import streamlit.components.v1 as components
 from database.queries import get_chat_history, save_chat_message
 from tutor.gemini_chat import JapaneseTutor
+
+
+# 朗讀前先清掉會被念成「星號、井號」的 markdown 符號與 emoji
+_SPEECH_STRIP = re.compile(r"[*#`_~>|]|📚|✨|🌸|😊|👆|🔊|🎉|💭|—|｜")
+
+
+def _clean_for_speech(text: str) -> str:
+    return _SPEECH_STRIP.sub("", text).strip()
+
+
+def _speak_button(text: str):
+    """在 AI 訊息下方放一個 🔊 朗讀鈕（用 components.html 才能真的觸發語音）。
+    用瀏覽器內建語音念（zh-TW），中日混合會用中文音念，屬環境限制。"""
+    payload = json.dumps(_clean_for_speech(text))  # 轉成 JS 安全字串
+    html = f"""
+    <button id="spk" onclick="speak()" style="
+        background:transparent; border:1px solid #c0392b; color:#c0392b;
+        border-radius:14px; padding:2px 12px; font-size:0.8rem; cursor:pointer;
+        font-family:'Segoe UI','Microsoft JhengHei',sans-serif;">
+      🔊 朗讀
+    </button>
+    <script>
+      function speak() {{
+        if (!window.speechSynthesis) return;
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance({payload});
+        u.lang = "zh-TW";
+        u.rate = 1.0;
+        window.speechSynthesis.speak(u);
+      }}
+    </script>
+    """
+    components.html(html, height=40)
 
 
 # 小葵老師角色頭像圖：assets/images/tutor.jpg
@@ -110,6 +146,7 @@ def _display_message(role: str, content: str):
             )
         with msg_col:
             st.markdown(_ai_bubble_html(content), unsafe_allow_html=True)
+            _speak_button(content)
 
 
 def show(user_id: int = 1, user_name: str = "學習者", user_level: str = "N5"):
