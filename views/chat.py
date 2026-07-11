@@ -5,9 +5,39 @@ pages/chat.py — AI 日語對話練習頁面
 固定啟用 RAG 文法知識庫，讓文法解釋更準確有依據。
 """
 
+import base64
+import os
 import streamlit as st
 from database.queries import get_chat_history, save_chat_message
 from tutor.gemini_chat import JapaneseTutor
+
+
+# 小葵老師角色頭像圖：assets/images/tutor.jpg
+_AVATAR_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "images", "tutor.jpg"
+)
+
+
+@st.cache_data(show_spinner=False)
+def _avatar_data_uri() -> str:
+    """把角色頭像讀成 base64 data URI（快取，只讀一次）。找不到檔案就回空字串。"""
+    try:
+        with open(_AVATAR_PATH, "rb") as f:
+            b64 = base64.b64encode(f.read()).decode("ascii")
+        return f"data:image/jpeg;base64,{b64}"
+    except Exception:
+        return ""
+
+
+def _avatar_html(size: int = 46) -> str:
+    """回傳小葵老師頭像的 <img> HTML；沒有圖片時退回櫻花 emoji。"""
+    uri = _avatar_data_uri()
+    if not uri:
+        return f"<div style='font-size:{size/28:.1f}rem;'>🌸</div>"
+    return (
+        f"<img class='ja-avatar' src='{uri}' "
+        f"style='width:{size}px;height:{size}px;' alt='小葵老師' />"
+    )
 
 
 # ── st.session_state 說明 ──────────────────────────────────────────────────
@@ -75,7 +105,7 @@ def _display_message(role: str, content: str):
         icon_col, msg_col, _ = st.columns([0.05, 0.72, 0.23])
         with icon_col:
             st.markdown(
-                "<div style='font-size:1.6rem; padding-top:8px;'>🌸</div>",
+                f"<div style='padding-top:6px;'>{_avatar_html(46)}</div>",
                 unsafe_allow_html=True,
             )
         with msg_col:
@@ -88,6 +118,27 @@ def show(user_id: int = 1, user_name: str = "學習者", user_level: str = "N5")
     """
 
     st.title("🌸 小葵老師")
+
+    # 小葵老師頭像樣式：圓形 + 紅框 + 輕微上下浮動（呼吸般的生命感）
+    st.markdown(
+        """
+        <style>
+          .ja-avatar {
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #c0392b;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            animation: ja-float 3s ease-in-out infinite;
+            display: block;
+          }
+          @keyframes ja-float {
+            0%, 100% { transform: translateY(0); }
+            50%      { transform: translateY(-5px); }
+          }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
     # ── 側邊欄 ───────────────────────────────────────────────────────────────
     with st.sidebar:
@@ -116,8 +167,9 @@ def show(user_id: int = 1, user_name: str = "學習者", user_level: str = "N5")
     with chat_container:
         if not st.session_state.messages:
             st.markdown(
-                "<div style='text-align:center; color:gray; padding:60px 0;'>"
-                "🌸 你好！我是小葵老師，有什麼日語問題都可以問我喔！"
+                "<div style='text-align:center; color:gray; padding:50px 0;'>"
+                f"<div style='display:flex; justify-content:center; margin-bottom:14px;'>{_avatar_html(96)}</div>"
+                "你好！我是小葵老師，有什麼日語問題都可以問我喔！"
                 "</div>",
                 unsafe_allow_html=True,
             )
@@ -152,7 +204,7 @@ def show(user_id: int = 1, user_name: str = "學習者", user_level: str = "N5")
             icon_col, msg_col, _ = st.columns([0.05, 0.72, 0.23])
             with icon_col:
                 st.markdown(
-                    "<div style='font-size:1.6rem; padding-top:8px;'>🌸</div>",
+                    f"<div style='padding-top:6px;'>{_avatar_html(46)}</div>",
                     unsafe_allow_html=True,
                 )
             with msg_col:
