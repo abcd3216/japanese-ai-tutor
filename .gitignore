@@ -17,6 +17,9 @@ env/
 # ── ChromaDB 向量索引（本機用 `python rag/embedder.py` 重新產生，不需版控）──
 data/chroma_db/
 
+# ── 原始影片素材（太大；實際用的是剪好的 static/tutor_loop.mp4）──
+assets/media/
+
 # ── 備份 / 暫存檔 ────────────────────────────────────────
 *.bak
 *.tmp
