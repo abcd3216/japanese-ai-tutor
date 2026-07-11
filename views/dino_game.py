@@ -58,7 +58,6 @@ def show(user_id: int = 1, user_level: str = "N5"):
     """單字小恐龍頁面入口。app.py 呼叫 dino_game.show(user_id, user_level)。"""
 
     st.title("🦖 單字小恐龍")
-    st.caption(f"目前程度：**{user_level}**　｜　限時 60 秒　｜　數字鍵 1 判定對　數字鍵 2 判定錯")
 
     # 確保這個程度的單字都已經有學習紀錄（沿用單字練習頁面同一套邏輯）。
     # 只在每個 session「第一次進入這個 user+level」時做一次，
@@ -84,8 +83,8 @@ def show(user_id: int = 1, user_level: str = "N5"):
       <div id="hud" style="display:flex; justify-content:space-between; align-items:center;
                             max-width:700px; margin:0 auto 8px auto; font-size:1.1rem;">
         <div>⏱️ <span id="timer">60</span> 秒</div>
-        <div id="target-box" style="font-size:0.95rem; font-weight:bold; color:#ffd166;">
-          🔼黃字中文 = 🔽白字日文 的意思嗎？
+        <div id="target-box" style="font-size:0.8rem; color:#bbb; white-space:nowrap;">
+          目前程度：{user_level}　｜　限時 60 秒　｜　數字鍵 1 判定對　2 判定錯
         </div>
         <div>✅ <span id="score">0</span> / <span id="rounds">0</span></div>
       </div>
