@@ -84,8 +84,8 @@ def show(user_id: int = 1, user_level: str = "N5"):
       <div id="hud" style="display:flex; justify-content:space-between; align-items:center;
                             max-width:700px; margin:0 auto 8px auto; font-size:1.1rem;">
         <div>⏱️ <span id="timer">60</span> 秒</div>
-        <div id="target-box" style="font-size:1.6rem; font-weight:bold;">
-          題目：<span id="target-word">－</span>
+        <div id="target-box" style="font-size:0.95rem; font-weight:bold; color:#ffd166;">
+          🔼黃字中文 = 🔽白字日文 的意思嗎？
         </div>
         <div>✅ <span id="score">0</span> / <span id="rounds">0</span></div>
       </div>
@@ -143,7 +143,6 @@ def show(user_id: int = 1, user_level: str = "N5"):
             }}
             target = targetWord;
             obstacle = {{ word: obsWord, x: W + 20, isMatch: isMatch, resolved: false }};
-            document.getElementById("target-word").innerText = target.chinese;
         }}
 
         // outcome: "correct"（判斷對）| "wrong"（按鍵判斷錯）| "collision"（來不及判斷、撞到）
@@ -256,9 +255,20 @@ def show(user_id: int = 1, user_level: str = "N5"):
             ctx.stroke();
         }}
 
+        // 題目（中文）畫在遊戲框內部的上方，讓玩家不用把視線移出畫面
+        function drawTarget() {{
+            if (!target) return;
+            ctx.fillStyle = "#ffd166";
+            ctx.font = "bold 30px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("題目：" + target.chinese, W / 2, 46);
+            ctx.textAlign = "left";
+        }}
+
         function loop() {{
             ctx.clearRect(0, 0, W, H);
             drawGround();
+            drawTarget();
             drawDino();
 
             if (obstacle) {{
