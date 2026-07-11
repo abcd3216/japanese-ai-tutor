@@ -40,7 +40,7 @@ def show(user_id: int = 1, user_level: str = "N5"):
     """單字卡頁面入口。app.py 呼叫 flashcard.show(user_id, user_level)。"""
 
     st.title("🃏 單字卡")
-    st.caption(f"目前程度：**{user_level}**　｜　依詞性分類瀏覽，點卡片可翻面看中文")
+    st.caption(f"目前程度：**{user_level}**　｜　依詞性分類瀏覽；🔊 點卡片聽日文發音、點日文字看中文")
 
     words = _cached_vocab(user_level)
     if not words:
@@ -79,7 +79,7 @@ def show(user_id: int = 1, user_level: str = "N5"):
         st.rerun()
 
     st.markdown(f"### {icon} {selected}　（{len(cat_words)} 個單字）")
-    st.caption("👆 點任一張卡片翻面看中文意思")
+    st.caption("🔊 點卡片聽日文發音　｜　👆 點日文字翻面看中文意思")
 
     _render_flip_cards(cat_words)
 
@@ -141,10 +141,12 @@ def _render_flip_cards(cat_words: list[dict]):
         box-shadow: 4px 4px 0px #b03060;
         transform: rotateY(180deg);
       }}
-      .jp {{ font-size: 1.5rem; font-weight: 700; }}
+      .jp {{ font-size: 1.5rem; font-weight: 700; cursor: pointer; transition: color 0.15s; }}
+      .jp:hover {{ color: #e74c3c; }}
       .kana {{ font-size: 1rem; color: gray; margin-top: 6px; }}
       .zh {{ font-size: 1.4rem; font-weight: 700; }}
-      .hint {{ font-size: 0.75rem; opacity: 0.6; margin-top: 8px; }}
+      .speak {{ font-size: 0.8rem; color: #c0392b; margin-top: 8px; }}
+      .hint {{ font-size: 0.72rem; opacity: 0.6; margin-top: 4px; }}
     </style>
 
     <div class="card-grid" id="card-grid"></div>
@@ -153,6 +155,18 @@ def _render_flip_cards(cat_words: list[dict]):
       (function() {{
         const cards = {cards_json};
         const grid = document.getElementById("card-grid");
+
+        // 用瀏覽器內建語音合成念日文（免費、免音檔）。
+        // 需要系統有安裝日語語音；若沒有，瀏覽器可能不發聲（屬環境限制）。
+        function speak(text) {{
+          if (!window.speechSynthesis) return;
+          window.speechSynthesis.cancel();
+          const u = new SpeechSynthesisUtterance(text);
+          u.lang = "ja-JP";
+          u.rate = 0.9;
+          window.speechSynthesis.speak(u);
+        }}
+
         cards.forEach(function(w) {{
           const card = document.createElement("div");
           card.className = "flip-card";
@@ -161,14 +175,28 @@ def _render_flip_cards(cat_words: list[dict]):
               '<div class="flip-face flip-front">' +
                 '<div class="jp">' + w.japanese + '</div>' +
                 '<div class="kana">' + (w.hiragana || "") + '</div>' +
-                '<div class="hint">點一下看中文</div>' +
+                '<div class="speak">🔊 點卡片聽發音</div>' +
+                '<div class="hint">點日文字 → 看中文</div>' +
               '</div>' +
               '<div class="flip-face flip-back">' +
                 '<div class="zh">' + w.chinese + '</div>' +
+                '<div class="hint">點一下翻回正面</div>' +
               '</div>' +
             '</div>';
+
+          const speakText = w.hiragana || w.japanese;
+          // 點「日文單字」→ 翻面看中文（stopPropagation 避免同時觸發念發音）
+          card.querySelector(".jp").addEventListener("click", function(e) {{
+            e.stopPropagation();
+            card.classList.add("flipped");
+          }});
+          // 點卡片其他地方：正面時念日文發音；背面時翻回正面
           card.addEventListener("click", function() {{
-            card.classList.toggle("flipped");
+            if (card.classList.contains("flipped")) {{
+              card.classList.remove("flipped");
+            }} else {{
+              speak(speakText);
+            }}
           }});
           grid.appendChild(card);
         }});
