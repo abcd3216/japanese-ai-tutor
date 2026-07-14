@@ -48,15 +48,18 @@ def _speak_button(text: str):
     components.html(html, height=40)
 
 
-# 小葵老師角色頭像圖：assets/images/tutor.jpg
+# 小葵老師角色圖（動漫 VTuber 風）：頭像與右側背景共用同一張
 _AVATAR_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "images", "tutor.jpg"
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "images", "tutor_still.jpg"
 )
+
+# 開心影片（已剪成前 4 秒 h264，放在 static/ 由 Streamlit 靜態服務提供）
+_VIDEO_URL = "app/static/tutor_loop.mp4"
 
 
 @st.cache_data(show_spinner=False)
 def _avatar_data_uri() -> str:
-    """把角色頭像讀成 base64 data URI（快取，只讀一次）。找不到檔案就回空字串。"""
+    """把角色圖讀成 base64 data URI（快取，只讀一次）。找不到檔案就回空字串。"""
     try:
         with open(_AVATAR_PATH, "rb") as f:
             b64 = base64.b64encode(f.read()).decode("ascii")
@@ -74,6 +77,21 @@ def _avatar_html(size: int = 46) -> str:
         f"<img class='ja-avatar' src='{uri}' "
         f"style='width:{size}px;height:{size}px;' alt='小葵老師' />"
     )
+
+
+def _stage_html(mode: str = "still") -> str:
+    """右側對話區的角色背景舞台。
+       mode='still' → 顯示靜止圖（平常）；
+       mode='talk'  → 播放開心影片（她回覆時，前 4 秒循環）。"""
+    if mode == "talk":
+        media = (
+            f"<video autoplay loop muted playsinline "
+            f"src='{_VIDEO_URL}'></video>"
+        )
+    else:
+        uri = _avatar_data_uri()
+        media = f"<img src='{uri}' alt='小葵老師' />" if uri else ""
+    return f"<div class='ja-stage'>{media}</div>"
 
 
 # ── st.session_state 說明 ──────────────────────────────────────────────────
@@ -156,13 +174,15 @@ def show(user_id: int = 1, user_name: str = "學習者", user_level: str = "N5")
 
     st.title("🌸 小葵老師")
 
-    # 小葵老師頭像樣式：圓形 + 紅框 + 輕微上下浮動（呼吸般的生命感）
+    # 頭像 + 角色背景舞台的樣式
     st.markdown(
         """
         <style>
+          /* 訊息小頭像：圓形紅框 + 輕微浮動；對焦到角色臉部（圖是直式） */
           .ja-avatar {
             border-radius: 50%;
             object-fit: cover;
+            object-position: 50% 12%;
             border: 2px solid #c0392b;
             box-shadow: 0 2px 6px rgba(0,0,0,0.3);
             animation: ja-float 3s ease-in-out infinite;
@@ -172,10 +192,37 @@ def show(user_id: int = 1, user_name: str = "學習者", user_level: str = "N5")
             0%, 100% { transform: translateY(0); }
             50%      { transform: translateY(-5px); }
           }
+
+          /* 讓主內容區透明，露出後面的角色背景（左側側邊欄維持不透明，會蓋住左邊） */
+          [data-testid="stMain"],
+          [data-testid="stMainBlockContainer"] { background: transparent !important; }
+
+          /* 角色舞台：固定在最底層鋪滿視窗；靜止圖 or 影片都用 cover 填滿 */
+          .ja-stage {
+            position: fixed; inset: 0; z-index: -1;
+            overflow: hidden; pointer-events: none;
+          }
+          .ja-stage img, .ja-stage video {
+            position: absolute; inset: 0;
+            width: 100%; height: 100%;
+            object-fit: cover; object-position: center 12%;
+          }
+          /* 底部深色漸層，讓下方的對話字看得清楚 */
+          .ja-stage::after {
+            content: ""; position: absolute; inset: 0;
+            background: linear-gradient(to bottom,
+              rgba(14,17,23,0.30) 0%,
+              rgba(14,17,23,0.10) 35%,
+              rgba(14,17,23,0.88) 100%);
+          }
         </style>
         """,
         unsafe_allow_html=True,
     )
+
+    # 角色背景舞台（可切換 靜止圖／開心影片）；用 st.empty 才能之後動態換內容
+    stage_ph = st.empty()
+    stage_ph.markdown(_stage_html("still"), unsafe_allow_html=True)
 
     # ── 側邊欄 ───────────────────────────────────────────────────────────────
     with st.sidebar:
@@ -229,6 +276,9 @@ def show(user_id: int = 1, user_name: str = "學習者", user_level: str = "N5")
 
     # ── 送出邏輯 ─────────────────────────────────────────────────────────────
     if send and user_input.strip():
+        # 她要回覆了 → 背景切成開心影片，像對你的話笑出反應（回覆完 rerun 會切回靜止圖）
+        stage_ph.markdown(_stage_html("talk"), unsafe_allow_html=True)
+
         # 1. 先把使用者訊息加入畫面 + 資料庫
         st.session_state.messages.append({"role": "user", "content": user_input})
         save_chat_message(user_id=user_id, role="user", content=user_input)
